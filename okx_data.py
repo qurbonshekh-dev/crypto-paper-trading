@@ -73,6 +73,13 @@ def m15(sym, since_ms):
     return candles(sym, "15m", max(need, 100))
 
 
+def m5(sym, since_ms):
+    """5-минутные свечи начиная примерно с since_ms."""
+    span = dt.datetime.now(UTC).timestamp()*1000 - since_ms
+    need = int(span / (5*60*1000)) + 40
+    return candles(sym, "5m", max(need, 100))
+
+
 if __name__ == "__main__":
     r = daily("BTCUSDT", 5)
     print("дневные BTC:", [(x["d"], x["c"]) for x in r[-3:]])
