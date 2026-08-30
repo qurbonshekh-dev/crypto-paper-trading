@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Счёт «Частая торговля»: вход по импульсу, тейк +1.5%, стоп -1%, до 20 сделок в день.
-Работает на 15-минутных свечах, поэтому журнал считается здесь, а не в браузере:
+Работает на 15-минутных свечах (источник OKX), поэтому журнал считается здесь, а не в браузере:
 сырых свечей слишком много, чтобы вкладывать их в страницу.
 
 Правила зафиксированы 30.08.2026:
@@ -11,7 +11,8 @@
   деньги     — $100, лот $10, максимум 5 позиций одновременно
   комиссия   — 0.075% на сторону (тариф пользователя с оплатой в BNB)
 """
-import json, os, sys, time, urllib.request, datetime as dt
+import json, os, sys, datetime as dt
+import okx_data
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PAIRS = ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT","ADAUSDT",
@@ -26,34 +27,11 @@ MAX_HOLD   = 96                # 24 часа в 15-минутках
 UTC = dt.timezone.utc
 
 
-def klines(sym, start_ms, tries=3):
-    """15-минутные свечи от start_ms до сейчас, постранично."""
-    out, cur = [], start_ms
-    while True:
-        u = (f"https://api.binance.com/api/v3/klines?symbol={sym}"
-             f"&interval=15m&startTime={cur}&limit=1000")
-        for k in range(tries):
-            try:
-                with urllib.request.urlopen(u, timeout=25) as r:
-                    b = json.load(r)
-                break
-            except Exception:
-                if k == tries - 1: raise
-                time.sleep(2 * (k + 1))
-        if not b: break
-        out += b
-        if len(b) < 1000: break
-        cur = b[-1][0] + 1
-        time.sleep(0.12)
-    return [{"t": k[0], "o": float(k[1]), "h": float(k[2]),
-             "l": float(k[3]), "c": float(k[4])} for k in out]
-
-
 def fetch_all():
     # берём с запасом назад, чтобы импульс считался уже на первом баре теста
     t0 = int(dt.datetime.fromisoformat(START).replace(tzinfo=UTC).timestamp() * 1000)
     t0 -= MOM_BARS * 15 * 60 * 1000
-    return {s: klines(s, t0) for s in PAIRS}
+    return {s: okx_data.m15(s, t0) for s in PAIRS}
 
 
 def simulate(data):

@@ -8,7 +8,8 @@
   выход: тейк +4% | стоп -12% (стоп раньше тейка) | закрытие 5-го дня
   комиссия 0.1% на сторону
 """
-import json, os, datetime as dt, urllib.request
+import json, os, datetime as dt
+import okx_data
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FEE = 0.001
@@ -23,31 +24,15 @@ UTC = dt.timezone.utc
 
 
 def pairs():
-    """
-    Вселенная торговли: топ-40 по обороту с историей 3+ лет.
-    Фильтр по спреду снят 26.08 (до первой сделки) — список при этом ЗАФИКСИРОВАН
-    в trading_pairs.json, чтобы вселенная не дрейфовала за оборотом в ходе теста.
-    """
-    return [s for s in json.load(open(os.path.join(HERE, "trading_pairs.json")))
-            if s not in EXCLUDE]
+    """Список пар зафиксирован; отобраны те, что есть на OKX."""
+    f = os.path.join(HERE, "trading_pairs_okx.json")
+    if not os.path.exists(f):
+        f = os.path.join(HERE, "trading_pairs.json")
+    return [x for x in json.load(open(f)) if x not in EXCLUDE]
 
 
-def klines(symbol, limit=400, tries=3):
-    url = (f"https://api.binance.com/api/v3/klines?symbol={symbol}"
-           f"&interval=1d&limit={limit}")
-    for k in range(tries):
-        try:
-            with urllib.request.urlopen(url, timeout=20) as r:
-                raw = json.load(r)
-            break
-        except Exception:
-            if k == tries - 1:
-                raise
-            import time
-            time.sleep(2 * (k + 1))
-    return [{"d": dt.datetime.fromtimestamp(k[0]/1000, UTC).date().isoformat(),
-             "o": float(k[1]), "h": float(k[2]), "l": float(k[3]),
-             "c": float(k[4]), "v": float(k[5])} for k in raw]
+def klines(symbol, limit=400):
+    return okx_data.daily(symbol, limit)
 
 
 def fetch_all(limit=400):
