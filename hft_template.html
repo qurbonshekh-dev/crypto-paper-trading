@@ -83,7 +83,7 @@ details p{margin:8px 0}
 
   <section><details>
     <summary>Правила (зафиксированы 30.08.2026)</summary>
-    <p>Виртуальные $100. Вход $10, максимум 5 позиций одновременно, 15 ликвидных пар.
+    <p>Виртуальные $100. Вход $10, максимум 10 позиций одновременно (лимит поднят с 5 до 10 в день старта, 30.08), 15 ликвидных пар.
     Сигнал входа — цена выросла на 1% и более за последний час; из подходящих берутся
     самые сильные. Выход: тейк +1,5%, стоп &minus;1%, либо по времени через 24 часа.
     Комиссия 0,075% на сторону — реальный тариф пользователя (Binance с оплатой в BNB).</p>
@@ -135,7 +135,7 @@ document.getElementById("cards").innerHTML = `
     <div class="val">${closed}</div>
     <div class="sub">${fmt(perDay,1)}/день · win ${closed?Math.round(wins/closed*100):0}%</div></div>
   <div class="card"><div class="lbl">Позиции</div>
-    <div class="val">${S.positions.length}<span style="font-size:16px;color:var(--muted)">/5</span></div>
+    <div class="val">${S.positions.length}<span style="font-size:16px;color:var(--muted)">/10</span></div>
     <div class="sub">в кэше $${fmt(S.cash)}</div></div>`;
 
 (function chart(){
