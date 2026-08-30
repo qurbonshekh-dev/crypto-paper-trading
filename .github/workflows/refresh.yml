@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
@@ -34,5 +38,10 @@ jobs:
             echo "изменений нет"
           else
             git commit -m "Обновление страниц $(date -u '+%Y-%m-%d %H:%M UTC')"
-            git push
+            # если репозиторий ушёл вперёд, перекладываем наш коммит поверх;
+            # в конфликтах генерируемых файлов побеждает свежая сборка (theirs)
+            for i in 1 2 3; do
+              git push && break
+              git pull --rebase -X theirs origin main
+            done
           fi
