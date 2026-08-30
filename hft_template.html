@@ -1,0 +1,206 @@
+<title>Частая торговля</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F4F3F0; --card:#FFFFFF; --ink:#1B1A17; --muted:#6A6862;
+  --line:#E3E1DC; --up:#0E7C4F; --dn:#C2453A; --fee:#B4762A; --chip:#EAE8E2;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131211; --card:#1C1B19; --ink:#EAE7E1; --muted:#9A968D;
+    --line:#2B2926; --up:#3FBD85; --dn:#E0685C; --fee:#D9A44A; --chip:#232120;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131211; --card:#1C1B19; --ink:#EAE7E1; --muted:#9A968D;
+  --line:#2B2926; --up:#3FBD85; --dn:#E0685C; --fee:#D9A44A; --chip:#232120;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.5 "Instrument Sans",system-ui,sans-serif;padding:20px 16px 48px}
+.wrap{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+h1{font-size:21px;font-weight:700;margin:0;letter-spacing:-.01em}
+.pill{background:var(--chip);border-radius:999px;padding:3px 12px;font-size:13px;
+  font-weight:600;color:var(--muted)}
+.stamp{margin-left:auto;font-size:13px;color:var(--muted)}
+.stale{color:var(--fee);font-weight:600}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.val{font:600 25px/1.2 "IBM Plex Mono",monospace;margin-top:4px;font-variant-numeric:tabular-nums}
+.sub{font-size:12.5px;color:var(--muted);margin-top:3px;font-family:"IBM Plex Mono",monospace}
+.up{color:var(--up)} .dn{color:var(--dn)} .feec{color:var(--fee)}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+section h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  margin:0 0 10px;font-weight:600}
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+th{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+  text-align:left;padding:5px 12px 5px 0;border-bottom:1px solid var(--line)}
+td{padding:6px 12px 6px 0;border-bottom:1px solid var(--line);
+  font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+td.sym{font-family:"Instrument Sans",sans-serif;font-weight:600}
+.empty{color:var(--muted);font-size:14px;padding:6px 0}
+svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-bottom:6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+details{font-size:13px;color:var(--muted)}
+details summary{cursor:pointer;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+details p{margin:8px 0}
+.note{font-size:12px;color:var(--muted)}
+.bar{height:8px;border-radius:4px;background:var(--chip);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--fee)}
+@media (max-width:560px){ .val{font-size:21px} body{padding:14px 10px 40px} }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Частая торговля</h1>
+    <span class="pill" id="daypill"></span>
+    <span class="stamp" id="stamp"></span>
+  </header>
+
+  <div class="cards" id="cards"></div>
+
+  <section>
+    <h2>Капитал и накопленные комиссии</h2>
+    <div class="legend"><span><i style="background:var(--up)"></i>счёт</span>
+      <span><i style="background:var(--fee)"></i>уплачено комиссий</span></div>
+    <div id="chart"></div>
+  </section>
+
+  <section>
+    <h2>Открытые позиции</h2>
+    <div class="tblwrap" id="positions"></div>
+  </section>
+
+  <section>
+    <h2>Журнал сделок</h2>
+    <div class="tblwrap" id="journal"></div>
+  </section>
+
+  <section><details>
+    <summary>Правила (зафиксированы 30.08.2026)</summary>
+    <p>Виртуальные $100. Вход $10, максимум 5 позиций одновременно, 15 ликвидных пар.
+    Сигнал входа — цена выросла на 1% и более за последний час; из подходящих берутся
+    самые сильные. Выход: тейк +1,5%, стоп &minus;1%, либо по времени через 24 часа.
+    Комиссия 0,075% на сторону — тариф с оплатой в BNB.</p>
+    <p>Что проверяем: бэктест на 15-минутных свечах за 2 месяца дал &minus;5,8% при этой
+    комиссии, причём при нулевой комиссии та же схема давала +17,9%. То есть у импульса
+    есть небольшое преимущество, но оно меньше стоимости частой торговли. Счёт заведён,
+    чтобы увидеть это на живом рынке.</p>
+    <p>Отличие от «Бумажной сотни»: там страница сама пересчитывает журнал из дневных
+    свечей, здесь журнал считается заранее — 15-минутных данных слишком много,
+    чтобы вложить их в страницу.</p>
+  </details></section>
+
+  <p class="note" id="footnote"></p>
+</div>
+
+<script id="data" type="application/json">__DATA_JSON__</script>
+<script>
+const S = JSON.parse(document.getElementById("data").textContent);
+const FEE = 0.00075, LOT = 10;
+const fmt = (x,d=2) => x.toLocaleString("ru-RU",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fpx = x => x >= 100 ? fmt(x,2) : x >= 1 ? fmt(x,4) : fmt(x,6);
+const cls = x => x > 0 ? "up" : x < 0 ? "dn" : "";
+const sgn = (x,d=2) => (x > 0 ? "+" : "") + fmt(x,d);
+const tm = t => new Date(t).toISOString().slice(5,16).replace("T"," ");
+
+const eq = S.cash + S.positions.reduce((a,p) => a + p.qty*p.now, 0);
+const closed = S.trades.length;
+const wins = S.trades.filter(t => t.pnl_usd > 0).length;
+const fees = (closed*2 + S.positions.length) * LOT * FEE;   // круги + открытые входы
+const startMs = Date.parse(S.start + "T00:00:00Z");
+const elapsed = Math.max((Date.parse(S.generated) - startMs)/86400000, 0.01);
+const perDay = closed/elapsed;
+
+document.getElementById("daypill").textContent =
+  elapsed >= S.days ? "тест завершён" : `день ${Math.max(1,Math.ceil(elapsed))} из ${S.days}`;
+const age = (Date.now() - Date.parse(S.generated))/3600000;
+const st = document.getElementById("stamp");
+st.textContent = `данные на ${S.generated.slice(0,16).replace("T"," ")} UTC`;
+if (age > 6) { st.classList.add("stale"); st.textContent += ` — ${Math.floor(age)} ч назад`; }
+
+document.getElementById("cards").innerHTML = `
+  <div class="card"><div class="lbl">Счёт</div>
+    <div class="val ${cls(eq-100)}">$${fmt(eq)}</div>
+    <div class="sub ${cls(eq-100)}">${sgn(eq-100)} (${sgn((eq/100-1)*100)}%)</div></div>
+  <div class="card"><div class="lbl">Отдано комиссий</div>
+    <div class="val feec">$${fmt(fees)}</div>
+    <div class="sub feec">${fmt(fees/100*100)}% от счёта</div></div>
+  <div class="card"><div class="lbl">Сделок закрыто</div>
+    <div class="val">${closed}</div>
+    <div class="sub">${fmt(perDay,1)}/день · win ${closed?Math.round(wins/closed*100):0}%</div></div>
+  <div class="card"><div class="lbl">Позиции</div>
+    <div class="val">${S.positions.length}<span style="font-size:16px;color:var(--muted)">/5</span></div>
+    <div class="sub">в кэше $${fmt(S.cash)}</div></div>`;
+
+(function chart(){
+  const el = document.getElementById("chart");
+  if (S.curve.length < 3) { el.innerHTML = '<div class="empty">график появится после первых часов торговли</div>'; return; }
+  const W=600,H=190,P=8;
+  // накопленная комиссия по времени закрытия сделок
+  const feePts = [];
+  let acc = 0, ti = 0;
+  const sorted = [...S.trades].sort((a,b)=>a.out_t-b.out_t);
+  S.curve.forEach(c => {
+    while (ti < sorted.length && sorted[ti].out_t <= c.t) { acc += LOT*FEE*2; ti++; }
+    feePts.push(acc);
+  });
+  const vals = S.curve.map(c=>c.eq).concat([100]);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const pad = (hi-lo)*0.12 || 1;
+  const x = i => P + i*(W-2*P)/(S.curve.length-1);
+  const y = v => H-P - (v-(lo-pad))*(H-2*P)/((hi+pad)-(lo-pad));
+  const maxFee = Math.max(...feePts, 0.01);
+  const yf = v => H-P - v/maxFee*(H-2*P)*0.5;
+  const line = pts => pts.map((v,i)=>`${x(i).toFixed(1)},${v.toFixed(1)}`).join(" ");
+  const li = S.curve.length-1;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="капитал и комиссии">
+    <line x1="${P}" y1="${y(100).toFixed(1)}" x2="${W-P}" y2="${y(100).toFixed(1)}"
+      stroke="var(--line)" stroke-dasharray="4 4"/>
+    <polyline points="${line(feePts.map(yf))}" fill="none" stroke="var(--fee)"
+      stroke-width="1.6" stroke-dasharray="3 3"/>
+    <polyline points="${line(S.curve.map(c=>y(c.eq)))}" fill="none" stroke="var(--up)" stroke-width="2.2"/>
+    <circle cx="${x(li).toFixed(1)}" cy="${y(S.curve[li].eq).toFixed(1)}" r="3.4" fill="var(--up)"/>
+    <text x="${P}" y="${y(100)-6}" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono">$100</text>
+  </svg>`;
+})();
+
+(function pos(){
+  const el = document.getElementById("positions");
+  if (!S.positions.length) { el.innerHTML = '<div class="empty">позиций нет — движок ждёт импульса</div>'; return; }
+  let h = "<table><tr><th>монета</th><th>вход</th><th>цена входа</th><th>сейчас</th>"
+        + "<th>P&L</th><th>цель</th><th>стоп</th></tr>";
+  for (const p of S.positions) {
+    const pnl = (p.now*(1-FEE))/(p.px*(1+FEE)) - 1;
+    h += `<tr><td class="sym">${p.sym.replace("USDT","")}</td><td>${tm(p.t)}</td>
+      <td>${fpx(p.px)}</td><td>${fpx(p.now)}</td>
+      <td class="${cls(pnl)}">${sgn(pnl*100)}%</td>
+      <td>${fpx(p.tp)}</td><td>${fpx(p.sl)}</td></tr>`;
+  }
+  el.innerHTML = h + "</table>";
+})();
+
+(function journal(){
+  const el = document.getElementById("journal");
+  if (!closed) { el.innerHTML = '<div class="empty">закрытых сделок пока нет</div>'; return; }
+  const why = {take:"тейк", stop:"стоп", time:"время"};
+  let h = "<table><tr><th>монета</th><th>вход</th><th>выход</th><th>причина</th>"
+        + "<th>результат</th><th>$</th></tr>";
+  for (const t of [...S.trades].reverse().slice(0,60))
+    h += `<tr><td class="sym">${t.sym.replace("USDT","")}</td>
+      <td>${tm(t.in_t)} @ ${fpx(t.in_px)}</td><td>${tm(t.out_t)} @ ${fpx(t.out_px)}</td>
+      <td>${why[t.reason]}</td><td class="${cls(t.pnl_pct)}">${sgn(t.pnl_pct)}%</td>
+      <td class="${cls(t.pnl_usd)}">${sgn(t.pnl_usd)}</td></tr>`;
+  el.innerHTML = h + "</table>" +
+    (closed > 60 ? `<div class="note" style="margin-top:8px">показаны последние 60 из ${closed}</div>` : "");
+})();
+
+document.getElementById("footnote").textContent =
+  "Деньги виртуальные. Журнал считается по 15-минутным свечам Binance по правилам, " +
+  "зафиксированным до начала теста; вручную сделки не совершаются и не редактируются.";
+</script>

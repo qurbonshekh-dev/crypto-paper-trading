@@ -1,0 +1,13 @@
+cache/
+cache15m/
+*.b64
+preview*.html
+test_dash.html
+tracker.xlsx
+real_journal.csv
+paper_state_*.json
+paper_journal_*.csv
+_fx.json
+_fixtures.json
+multi_run.log
+results_*.json

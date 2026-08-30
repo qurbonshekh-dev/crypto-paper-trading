@@ -1,0 +1,367 @@
+<title>Бумажная сотня</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F2F5F3; --card:#FFFFFF; --ink:#182420; --muted:#5C6B64;
+  --line:#DDE5E0; --up:#0E7C4F; --dn:#C2453A; --wait:#9A6B15;
+  --chip:#E7EEE9; --bench:#7A8B94; --tight:#7A5EA8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1411; --card:#161E1A; --ink:#E4ECE7; --muted:#8CA096;
+    --line:#26302B; --up:#3FBD85; --dn:#E0685C; --wait:#D9A44A;
+    --chip:#1E2A24; --bench:#6E8089; --tight:#A98CD8;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1411; --card:#161E1A; --ink:#E4ECE7; --muted:#8CA096;
+  --line:#26302B; --up:#3FBD85; --dn:#E0685C; --wait:#D9A44A;
+  --chip:#1E2A24; --bench:#6E8089; --tight:#A98CD8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.5 "Instrument Sans",system-ui,sans-serif;padding:20px 16px 48px}
+.wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+h1{font-size:22px;font-weight:700;margin:0;letter-spacing:-.01em}
+.pill{background:var(--chip);border-radius:999px;padding:3px 12px;font-size:13px;
+  font-weight:600;color:var(--muted)}
+.stamp{margin-left:auto;font-size:13px;color:var(--muted)}
+.seg{display:flex;gap:4px;background:var(--chip);border-radius:10px;padding:4px;
+  width:fit-content;max-width:100%;overflow-x:auto}
+.seg button{white-space:nowrap}
+.seg button{border:0;background:transparent;color:var(--muted);font:600 13px/1
+  "Instrument Sans",sans-serif;padding:8px 14px;border-radius:7px;cursor:pointer}
+.seg button.active{background:var(--card);color:var(--ink);
+  box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg button:focus-visible{outline:2px solid var(--up);outline-offset:1px}
+.stale{color:var(--wait);font-weight:600}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);font-weight:600}
+.card .val{font:600 26px/1.2 "IBM Plex Mono",monospace;margin-top:4px;
+  font-variant-numeric:tabular-nums}
+.card .sub{font-size:13px;color:var(--muted);margin-top:2px;
+  font-family:"IBM Plex Mono",monospace}
+.up{color:var(--up)} .dn{color:var(--dn)} .wait{color:var(--wait)}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+section h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 10px;font-weight:600}
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px;white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+  text-align:left;padding:5px 12px 5px 0;border-bottom:1px solid var(--line)}
+td{padding:6px 12px 6px 0;border-bottom:1px solid var(--line);
+  font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+td.sym{font-family:"Instrument Sans",sans-serif;font-weight:600}
+.empty{color:var(--muted);font-size:14px;padding:6px 0}
+svg{display:block;width:100%;height:auto}
+details{font-size:13.5px;color:var(--muted)}
+details summary{cursor:pointer;font-weight:600;font-size:13px;text-transform:uppercase;
+  letter-spacing:.08em}
+details p{margin:8px 0}
+.note{font-size:12.5px;color:var(--muted)}
+.legend{display:flex;gap:16px;font-size:12.5px;color:var(--muted);margin-bottom:6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;
+  vertical-align:middle;margin-right:5px}
+@media (max-width:560px){ .card .val{font-size:21px} body{padding:14px 10px 40px} }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Бумажная сотня</h1>
+    <span class="pill" id="daypill"></span>
+    <span class="stamp" id="stamp"></span>
+  </header>
+
+  <div class="seg" role="tablist" aria-label="стратегия">
+    <button data-v="all" class="active">Обе</button>
+    <button data-v="sig">Сигнальная</button>
+    <button data-v="dip">Дип-скупка</button>
+    <button data-v="tight">Узкий стоп</button>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <section>
+    <h2>Капитал против бенчмарка</h2>
+    <div class="legend" id="legend"></div>
+    <div id="chart"></div>
+  </section>
+
+  <section>
+    <h2>Открытые позиции</h2>
+    <div class="tblwrap" id="positions"></div>
+  </section>
+
+  <section>
+    <h2>Сигналы на завтрашнее открытие</h2>
+    <div id="signals"></div>
+  </section>
+
+  <section>
+    <h2>Журнал сделок</h2>
+    <div class="tblwrap" id="journal"></div>
+  </section>
+
+  <section><details>
+    <summary>Правила (зафиксированы 25.08.2026)</summary>
+    <p>Виртуальный счёт $100. Вход $10, максимум 5 позиций, по одной на монету, только
+    38 торгуемых пар Binance (топ-40 по обороту с историей 3+ лет; фильтр по
+    спреду снят 26.08 до первой сделки, список зафиксирован на эту дату). Сигнал A — BTC: вчерашний объём &ge;1.95&times;
+    среднего за 20 дней и цена выше MA200 (порог 2.0&rarr;1.95 смягчён 25.08, до первой сделки). Сигнал B — альты: RSI14 &lt; 30.
+    Выход: тейк +4%, аварийный стоп &minus;12%, иначе закрытие 5-го дня. Комиссия 0.1%
+    на сторону. Повторный вход в монету — не раньше следующего дня.</p>
+    <p><b>Счёт «Дип-скупка»</b> (добавлен 25.08, до первой сделки): отдельные виртуальные
+    $100. Вход — любая монета списка, упавшая вчера на 5% и больше (приоритет — кто упал
+    сильнее). Выходы и лимиты те же. На истории 2022–2026 (на этой вселенной) схема теряла ~40% годовых —
+    счёт добавлен именно чтобы увидеть это (или опровергнуть) на живом рынке.</p>
+    <p><b>Счёт «Узкий стоп»</b> (добавлен 25.08, до первой сделки): отдельные $100.
+    Вход — монета, упавшая вчера на 4% и больше. Тейк +3.5%, стоп &minus;4%, время-стоп 5-й
+    день. На истории 2022–2026 давал ~&minus;40% годовых при winrate 28%: стоп &minus;4% уже
+    внутри обычного дневного шума волатильной монеты, поэтому выбивает раньше, чем идея
+    успевает сработать. Счёт добавлен, чтобы проверить это на живом рынке.</p>
+    <p>Историческое ожидание сигнального счёта на этой вселенной: ~&minus;12% годовых
+    (на прежних 24 самых ликвидных парах было ~&minus;6%). Расширение списка ухудшает все
+    три счёта: чем ниже оборот монеты, тем чаще это затяжное падение, а winrate при этом
+    почти не меняется. Эталон «$100 в BTC» за тот же период: +12% годовых.</p>
+    <p>Допущение: лимитные ордера исполняются точно по цене цели — на реальном рынке
+    результат был бы немного хуже. Это симуляция для сравнения, а не инвестиционный
+    совет; исторический перевес этих сигналов мал и в последние годы слабел.</p>
+  </details></section>
+
+  <p class="note" id="footnote"></p>
+</div>
+
+<script id="data" type="application/json">__DATA_JSON__</script>
+<script>
+__ENGINE_JS__
+
+const BLOB = JSON.parse(document.getElementById("data").textContent);
+const START = "2026-08-25", TEST_DAYS = 30;
+// сигналы считаются только по закрытым дням (внутри движка), но сам текущий день
+// обрабатывается: цена входа = его открытие, зафиксированное в 00:00 UTC
+const complete = BLOB.candles;
+const closedOnly = {};
+for (const s in BLOB.candles)
+  closedOnly[s] = BLOB.candles[s].filter(b => b.d <= BLOB.lastComplete);
+const live = {};
+for (const s in BLOB.candles) {
+  const rows = BLOB.candles[s];
+  live[s] = rows.length ? rows[rows.length - 1].c : null;
+}
+const R  = simulate(complete, START, TEST_DAYS, "signals", BLOB.lastComplete);
+const R2 = simulate(complete, START, TEST_DAYS, "dip", BLOB.lastComplete);
+const R3 = simulate(complete, START, TEST_DAYS, "tight", BLOB.lastComplete);
+
+const fmt = (x, d=2) => x.toLocaleString("ru-RU", {minimumFractionDigits:d, maximumFractionDigits:d});
+const fpx = x => x >= 100 ? fmt(x, 2) : x >= 1 ? fmt(x, 4) : fmt(x, 6);
+const cls = x => x > 0 ? "up" : x < 0 ? "dn" : "";
+const sgn = x => (x > 0 ? "+" : "") + fmt(x, 2);
+const markOf = A => A.positions.reduce((m,p) => m + p.qty*(live[p.sym] ?? p.px), A.cash);
+const winsOf = A => A.trades.filter(t => t.pnl_usd > 0).length;
+
+const ACC = {
+  sig:   {r: R,  name: "Сигнальная", color: "var(--up)"},
+  dip:   {r: R2, name: "Дип-скупка", color: "var(--wait)"},
+  tight: {r: R3, name: "Узкий стоп", color: "var(--tight)"},
+};
+const KEYS = ["sig","dip","tight"];
+const SHORT = {sig:"сигн.", dip:"дип", tight:"узк."};
+
+// --- шапка (не зависит от переключателя) ---
+const dayN = Math.max(0, Math.min(TEST_DAYS,
+  Math.round((Date.parse(BLOB.lastComplete) - Date.parse(START)) / 86400000)));
+document.getElementById("daypill").textContent =
+  dayN >= TEST_DAYS ? "тест завершён" : dayN < 1 ? "старт 26 августа" : `день ${dayN} из ${TEST_DAYS}`;
+const genAge = (Date.now() - Date.parse(BLOB.generated)) / 3600000;
+const st = document.getElementById("stamp");
+st.textContent = `данные на ${BLOB.lastComplete} UTC`;
+if (genAge > 36) { st.classList.add("stale");
+  st.textContent += ` — не обновлялись ${Math.floor(genAge)} ч (Mac был выключен?)`; }
+
+const lastBtcC = closedOnly["BTCUSDT"].length
+  ? closedOnly["BTCUSDT"][closedOnly["BTCUSDT"].length-1].c : null;
+const lastCurve = R.curve.length ? R.curve[R.curve.length-1] : null;
+const bench = lastCurve && lastBtcC
+  ? lastCurve.bench * (live["BTCUSDT"] ?? lastBtcC) / lastBtcC : null;
+
+// --- предрасчёт сигналов на завтра ---
+const sigOut = [], dipOut = [], tightOut = [];
+(function(){
+  const btc = closedOnly["BTCUSDT"], n = btc.length;
+  if (n > 221) {
+    let ma=0; for (let k=n-200;k<n;k++) ma += btc[k].c; ma/=200;
+    let v20=0; for (let k=n-21;k<n-1;k++) v20 += btc[k].v; v20/=20;
+    const volx = btc[n-1].v/v20;
+    if (live["BTCUSDT"] > ma && volx >= 1.95)
+      sigOut.push(`<b>A · BTC</b> — объём ${fmt(volx,1)}× и цена выше MA200`);
+  }
+  for (const s in closedOnly) {
+    const rows = closedOnly[s];
+    if (s !== "BTCUSDT" && rows.length >= 265) {
+      const r = wilderRsi(rows.slice(-250).map(b => b.c));
+      if (r !== null && r < 30) sigOut.push(`<b>B · ${s.replace("USDT","")}</b> — RSI ${fmt(r,0)}`);
+    }
+    if (rows.length >= 2) {
+      const prev = rows[rows.length-1].c;
+      const r = (live[s] ?? prev) / prev - 1;
+      if (r <= -0.05) dipOut.push(`<b>Д · ${s.replace("USDT","")}</b> — сегодня ${fmt(r*100,1)}%`);
+      if (r <= -0.04) tightOut.push(`<b>У · ${s.replace("USDT","")}</b> — сегодня ${fmt(r*100,1)}%`);
+    }
+  }
+})();
+
+// --- рендер по выбранному виду ---
+function renderCards(v){
+  const benchCard = `<div class="card"><div class="lbl">$100 в BTC</div>
+    <div class="val">${bench ? "$"+fmt(bench) : "—"}</div>
+    <div class="sub">${bench ? sgn(bench-100) : "стартует 26.08"}</div></div>`;
+  if (v === "all") {
+    document.getElementById("cards").innerHTML =
+      KEYS.map(k => {
+        const A = ACC[k].r, m = markOf(A);
+        return `<div class="card"><div class="lbl">${ACC[k].name}</div>
+          <div class="val ${cls(m-100)}">$${fmt(m)}</div>
+          <div class="sub ${cls(m-100)}">${sgn((m/100-1)*100)}% · сделок ${A.trades.length}</div></div>`;
+      }).join("") + benchCard;
+    return;
+  }
+  const A = ACC[v].r, m = markOf(A);
+  document.getElementById("cards").innerHTML = `
+    <div class="card"><div class="lbl">${ACC[v].name}</div>
+      <div class="val ${cls(m-100)}">$${fmt(m)}</div>
+      <div class="sub ${cls(m-100)}">${sgn(m-100)} (${sgn((m/100-1)*100)}%)</div></div>
+    ${benchCard}
+    <div class="card"><div class="lbl">Сделок закрыто</div>
+      <div class="val">${A.trades.length}</div>
+      <div class="sub">${A.trades.length ? "прибыльных " + winsOf(A) : "пока нет"}</div></div>
+    <div class="card"><div class="lbl">Позиции</div>
+      <div class="val">${A.positions.length}<span style="font-size:16px;color:var(--muted)">/5</span></div>
+      <div class="sub">в кэше $${fmt(A.cash)}</div></div>`;
+}
+
+function renderChart(v){
+  const el = document.getElementById("chart");
+  const lg = document.getElementById("legend");
+  const series = v === "all" ? KEYS : [v];
+  lg.innerHTML = series.map(k =>
+      `<span><i style="background:${ACC[k].color}"></i>${ACC[k].name.toLowerCase()}</span>`
+    ).join("") + `<span><i style="background:var(--bench)"></i>$100 в BTC</span>`;
+  if (R.curve.length < 2) {
+    el.innerHTML = '<div class="empty">график появится после первых торговых дней</div>'; return;
+  }
+  const W=600, H=200, P=8;
+  const vals = [];
+  R.curve.forEach((c,i) => {
+    if (c.bench != null) vals.push(c.bench);
+    for (const k of series) vals.push(ACC[k].r.curve[i].eq);
+  });
+  const lo = Math.min(...vals, 99), hi = Math.max(...vals, 101);
+  const x = i => P + i*(W-2*P)/(R.curve.length-1);
+  const y = vv => H-P - (vv-lo)*(H-2*P)/(hi-lo);
+  const pts = (cv,k) => cv.map((c,i) => `${x(i).toFixed(1)},${y(c[k]).toFixed(1)}`).join(" ");
+  const lastI = R.curve.length-1;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="кривая капитала">
+    <line x1="${P}" y1="${y(100).toFixed(1)}" x2="${W-P}" y2="${y(100).toFixed(1)}"
+      stroke="var(--line)" stroke-dasharray="4 4"/>
+    <polyline points="${pts(R.curve,"bench")}" fill="none" stroke="var(--bench)" stroke-width="1.6"/>`;
+  for (const k of series)
+    svg += `<polyline points="${pts(ACC[k].r.curve,"eq")}" fill="none"
+      stroke="${ACC[k].color}" stroke-width="${k==="sig"?2.2:1.7}"/>`;
+  for (const k of series)
+    svg += `<circle cx="${x(lastI).toFixed(1)}" cy="${y(ACC[k].r.curve[lastI].eq).toFixed(1)}"
+      r="3.2" fill="${ACC[k].color}"/>`;
+  svg += `<text x="${P}" y="${y(100)-6}" font-size="10" fill="var(--muted)"
+      font-family="IBM Plex Mono">$100</text></svg>`;
+  el.innerHTML = svg;
+}
+
+function renderPositions(v){
+  const el = document.getElementById("positions");
+  let all = KEYS.flatMap(k => ACC[k].r.positions.map(p => ({...p, acc:k})));
+  if (v !== "all") all = all.filter(p => p.acc === v);
+  if (!all.length) {
+    el.innerHTML = '<div class="empty">позиций нет — движ' +
+      (v==="all"?"ки ждут сигналов":"ок ждёт сигнала") + '</div>'; return; }
+  const accCol = v === "all";
+  let h = "<table><tr>" + (accCol?"<th>счёт</th>":"") +
+    "<th>монета</th><th>сигнал</th><th>вход</th><th>цена входа</th>" +
+    "<th>сейчас</th><th>P&L</th><th>цель</th><th>стоп</th><th>дней</th></tr>";
+  const today = BLOB.lastComplete;
+  for (const p of all) {
+    const now = live[p.sym] ?? p.px;
+    const pnl = (now*(1-0.001))/(p.px*(1+0.001)) - 1;
+    const age = Math.round((Date.parse(today)-Date.parse(p.day))/86400000) + 1;
+    h += `<tr>` + (accCol?`<td>${SHORT[p.acc]}</td>`:"") +
+      `<td class="sym">${p.sym.replace("USDT","")}</td><td>${p.sig}</td>
+      <td>${p.day.slice(5)}</td><td>${fpx(p.px)}</td><td>${fpx(now)}</td>
+      <td class="${cls(pnl)}">${sgn(pnl*100)}%</td><td>${fpx(p.target)}</td>
+      <td>${fpx(p.stop)}</td><td${age>=5?' class="wait"':''}>${age}</td></tr>`;
+  }
+  el.innerHTML = h + "</table>";
+}
+
+function renderSignals(v){
+  const el = document.getElementById("signals");
+  const day0 = BLOB.lastComplete <= START;
+  let h = day0 ? "<div class='note' style='margin-bottom:8px'>⚠ первый торговый день — 26.08: " +
+    "входы ниже станут актуальны после закрытия свечи 25.08 (05:10 утра)</div>" : "";
+  if (v === "all" || v === "sig")
+    h += "<div class='note' style='margin-bottom:6px'>Сигнальная:</div>" +
+      (sigOut.length ? sigOut.map(t => `<div>${t}</div>`).join("")
+                     : '<div class="empty">сигналов нет</div>');
+  if (v === "all" || v === "dip")
+    h += "<div class='note' style='margin:10px 0 6px'>Дип-скупка (движение за сегодня, предварительно):</div>" +
+      (dipOut.length ? dipOut.map(t => `<div>${t}</div>`).join("")
+                     : '<div class="empty">падений на 5%+ сегодня нет</div>');
+  if (v === "all" || v === "tight")
+    h += "<div class='note' style='margin:10px 0 6px'>Узкий стоп (движение за сегодня, предварительно):</div>" +
+      (tightOut.length ? tightOut.map(t => `<div>${t}</div>`).join("")
+                       : '<div class="empty">падений на 4%+ сегодня нет</div>');
+  el.innerHTML = h +
+    '<div class="note" style="margin-top:8px">входы — на открытии следующего дня UTC, если будут свободные слоты</div>';
+}
+
+function renderJournal(v){
+  const el = document.getElementById("journal");
+  let all = KEYS.flatMap(k => ACC[k].r.trades.map(t => ({...t, acc:k})))
+    .sort((a,b) => a.out_d < b.out_d ? 1 : -1);
+  if (v !== "all") all = all.filter(t => t.acc === v);
+  if (!all.length) {
+    el.innerHTML = '<div class="empty">закрытых сделок пока нет</div>'; return; }
+  const why = {take:"тейк", time:"время", stop:"стоп"};
+  const accCol = v === "all";
+  let h = "<table><tr>" + (accCol?"<th>счёт</th>":"") +
+    "<th>монета</th><th>сигнал</th><th>вход</th><th>выход</th>" +
+    "<th>причина</th><th>результат</th><th>$</th></tr>";
+  for (const t of all)
+    h += `<tr>` + (accCol?`<td>${SHORT[t.acc]}</td>`:"") +
+      `<td class="sym">${t.sym.replace("USDT","")}</td><td>${t.sig}</td>
+      <td>${t.in_d.slice(5)} @ ${fpx(t.in_px)}</td><td>${t.out_d.slice(5)} @ ${fpx(t.out_px)}</td>
+      <td>${why[t.reason]}</td><td class="${cls(t.pnl_pct)}">${sgn(t.pnl_pct)}%</td>
+      <td class="${cls(t.pnl_usd)}">${sgn(t.pnl_usd)}</td></tr>`;
+  el.innerHTML = h + "</table>";
+}
+
+function render(v){
+  document.querySelectorAll(".seg button").forEach(b =>
+    b.classList.toggle("active", b.dataset.v === v));
+  renderCards(v); renderChart(v); renderPositions(v);
+  renderSignals(v); renderJournal(v);
+  try { localStorage.setItem("bs_view", v); } catch(e) {}
+}
+document.querySelectorAll(".seg button").forEach(b =>
+  b.addEventListener("click", () => render(b.dataset.v)));
+
+document.getElementById("footnote").textContent =
+  "Деньги виртуальные. Движок детерминирован: журнал пересчитывается из дневных свечей " +
+  "Binance по зафиксированным правилам — вручную сделки не совершаются и не редактируются.";
+
+let view = "all";
+try { view = localStorage.getItem("bs_view") || "all"; } catch(e) {}
+if (!["all", ...KEYS].includes(view)) view = "all";
+render(view);
+</script>

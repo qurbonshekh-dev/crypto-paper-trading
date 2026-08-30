@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""
+Счёт «Частая торговля»: вход по импульсу, тейк +1.5%, стоп -1%, до 20 сделок в день.
+Работает на 15-минутных свечах, поэтому журнал считается здесь, а не в браузере:
+сырых свечей слишком много, чтобы вкладывать их в страницу.
+
+Правила зафиксированы 30.08.2026:
+  вселенная  — 15 ликвидных пар
+  вход       — цена выросла >= 1% за последний час (4 бара), берём сильнейшие
+  выход      — тейк +1.5% | стоп -1% | по времени через 24 часа
+  деньги     — $100, лот $10, максимум 5 позиций одновременно
+  комиссия   — 0.075% на сторону (тариф пользователя с оплатой в BNB)
+"""
+import json, os, sys, time, urllib.request, datetime as dt
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+PAIRS = ["BTCUSDT","ETHUSDT","SOLUSDT","XRPUSDT","BNBUSDT","DOGEUSDT","ADAUSDT",
+         "AVAXUSDT","LINKUSDT","LTCUSDT","BCHUSDT","TRXUSDT","ZECUSDT","WLDUSDT","SUIUSDT"]
+START      = "2026-08-30"      # первый день теста
+TEST_DAYS  = 30
+FEE        = 0.00075
+LOT, MAXPOS = 10.0, 5
+TP, SL     = 0.015, 0.01
+MOM_BARS, MOM_PCT = 4, 1.0     # импульс: +1% за 4 бара (час)
+MAX_HOLD   = 96                # 24 часа в 15-минутках
+UTC = dt.timezone.utc
+
+
+def klines(sym, start_ms, tries=3):
+    """15-минутные свечи от start_ms до сейчас, постранично."""
+    out, cur = [], start_ms
+    while True:
+        u = (f"https://api.binance.com/api/v3/klines?symbol={sym}"
+             f"&interval=15m&startTime={cur}&limit=1000")
+        for k in range(tries):
+            try:
+                with urllib.request.urlopen(u, timeout=25) as r:
+                    b = json.load(r)
+                break
+            except Exception:
+                if k == tries - 1: raise
+                time.sleep(2 * (k + 1))
+        if not b: break
+        out += b
+        if len(b) < 1000: break
+        cur = b[-1][0] + 1
+        time.sleep(0.12)
+    return [{"t": k[0], "o": float(k[1]), "h": float(k[2]),
+             "l": float(k[3]), "c": float(k[4])} for k in out]
+
+
+def fetch_all():
+    # берём с запасом назад, чтобы импульс считался уже на первом баре теста
+    t0 = int(dt.datetime.fromisoformat(START).replace(tzinfo=UTC).timestamp() * 1000)
+    t0 -= MOM_BARS * 15 * 60 * 1000
+    return {s: klines(s, t0) for s in PAIRS}
+
+
+def simulate(data):
+    syms = [s for s in data if data[s]]
+    if not syms: return None
+    n = min(len(data[s]) for s in syms)
+    start_ms = int(dt.datetime.fromisoformat(START).replace(tzinfo=UTC).timestamp() * 1000)
+
+    cash, pos, trades, curve = 100.0, [], [], []
+    end_ms = start_ms + TEST_DAYS * 86400 * 1000
+
+    for i in range(MOM_BARS + 1, n):
+        ts = data[syms[0]][i]["t"]
+        if ts < start_ms:
+            continue
+
+        # выходы: стоп проверяем раньше тейка (консервативно)
+        keep = []
+        for p in pos:
+            b = data[p["s"]][i]
+            ex = why = None
+            if b["l"] <= p["sl"]:      ex, why = p["sl"], "stop"
+            elif b["h"] >= p["tp"]:    ex, why = p["tp"], "take"
+            elif i - p["i"] >= MAX_HOLD: ex, why = b["c"], "time"
+            if ex is None:
+                keep.append(p)
+            else:
+                pr = p["q"] * ex * (1 - FEE)
+                cash += pr
+                trades.append({"sym": p["s"], "in_t": p["t"], "in_px": p["px"],
+                               "out_t": b["t"], "out_px": ex, "reason": why,
+                               "pnl_usd": round(pr - LOT, 4),
+                               "pnl_pct": round((pr / LOT - 1) * 100, 3)})
+        pos = keep
+
+        # входы по импульсу, только пока идёт период теста
+        if ts <= end_ms and len(pos) < MAXPOS and cash >= LOT:
+            held = {p["s"] for p in pos}
+            cand = []
+            for s in syms:
+                if s in held: continue
+                r = data[s]
+                base = r[i - 1 - MOM_BARS]["c"]
+                if base > 0 and r[i-1]["c"] / base - 1 >= MOM_PCT / 100:
+                    cand.append((r[i-1]["c"] / base - 1, s))
+            cand.sort(reverse=True)
+            for _, s in cand:
+                if len(pos) >= MAXPOS or cash < LOT: break
+                px = data[s][i]["o"]
+                cash -= LOT
+                pos.append({"s": s, "i": i, "t": data[s][i]["t"], "px": px,
+                            "q": LOT * (1 - FEE) / px,
+                            "tp": px * (1 + TP), "sl": px * (1 - SL)})
+
+        mark = cash + sum(p["q"] * data[p["s"]][i]["c"] for p in pos)
+        curve.append({"t": ts, "eq": round(mark, 4)})
+
+    last = {s: data[s][n-1]["c"] for s in syms}
+    return {"cash": round(cash, 4), "trades": trades, "curve": curve,
+            "positions": [{"sym": p["s"], "t": p["t"], "px": p["px"], "qty": p["q"],
+                           "tp": p["tp"], "sl": p["sl"],
+                           "now": last[p["s"]]} for p in pos],
+            "last": last, "start": START, "days": TEST_DAYS,
+            "generated": dt.datetime.now(UTC).isoformat(timespec="seconds")}
+
+
+if __name__ == "__main__":
+    data = fetch_all()
+    r = simulate(data)
+    json.dump(r, open(os.path.join(HERE, "hft_state.json"), "w"))
+    eq = r["cash"] + sum(p["qty"] * p["now"] for p in r["positions"])
+    t = r["trades"]
+    w = sum(1 for x in t if x["pnl_usd"] > 0)
+    days = max((dt.datetime.now(UTC) - dt.datetime.fromisoformat(START).replace(tzinfo=UTC)).total_seconds()/86400, 0.01)
+    print(f"счёт ${eq:.2f}  сделок {len(t)} ({len(t)/days:.1f}/день)  "
+          f"winrate {w/len(t)*100 if t else 0:.0f}%  открыто {len(r['positions'])}")
