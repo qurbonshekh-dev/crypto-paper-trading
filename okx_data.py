@@ -54,7 +54,7 @@ def candles(sym, bar, limit_bars):
         need -= len(d)
         if len(d) < 300: break
         time.sleep(0.12)
-    rows = [out[t] for t in sorted(out)]
+    rows = [out[t] for t in sorted(out)][-limit_bars:]   # лишнее из блоков по 300
     return [{"t": int(k[0]), "o": float(k[1]), "h": float(k[2]),
              "l": float(k[3]), "c": float(k[4]), "v": float(k[5])} for k in rows]
 
