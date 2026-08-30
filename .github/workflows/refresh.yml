@@ -1,0 +1,37 @@
+name: Обновление страниц бумажной торговли
+
+on:
+  schedule:
+    - cron: '3 * * * *'      # каждый час
+  workflow_dispatch:          # и по кнопке вручную
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Дневные свечи → dashboard.html
+        run: python3 refresh_dashboard.py
+
+      - name: 15-минутные свечи → hft_dashboard.html
+        run: python3 refresh_hft.py
+
+      - name: Зафиксировать результат
+        run: |
+          git config user.name  "paper-trading-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add dashboard.html hft_dashboard.html hft_state.json plat_data.json
+          if git diff --staged --quiet; then
+            echo "изменений нет"
+          else
+            git commit -m "Обновление страниц $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
