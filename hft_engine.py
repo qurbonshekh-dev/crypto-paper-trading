@@ -34,14 +34,14 @@ def fetch_all():
     return {s: okx_data.m5(s, t0) for s in PAIRS}
 
 
-def simulate(data):
+def simulate(data, start=START, sl=SL, tp=TP, test_days=TEST_DAYS):
     syms = [s for s in data if data[s]]
     if not syms: return None
     n = min(len(data[s]) for s in syms)
-    start_ms = int(dt.datetime.fromisoformat(START).replace(tzinfo=UTC).timestamp() * 1000)
+    start_ms = int(dt.datetime.fromisoformat(start).replace(tzinfo=UTC).timestamp() * 1000)
 
     cash, pos, trades, curve = 100.0, [], [], []
-    end_ms = start_ms + TEST_DAYS * 86400 * 1000
+    end_ms = start_ms + test_days * 86400 * 1000
 
     for i in range(MOM_BARS + 1, n):
         ts = data[syms[0]][i]["t"]
@@ -84,7 +84,7 @@ def simulate(data):
                 cash -= LOT
                 pos.append({"s": s, "i": i, "t": data[s][i]["t"], "px": px,
                             "q": LOT * (1 - FEE) / px,
-                            "tp": px * (1 + TP), "sl": px * (1 - SL)})
+                            "tp": px * (1 + tp), "sl": px * (1 - sl)})
 
         mark = cash + sum(p["q"] * data[p["s"]][i]["c"] for p in pos)
         curve.append({"t": ts, "eq": round(mark, 4)})
@@ -98,7 +98,7 @@ def simulate(data):
             "positions": [{"sym": p["s"], "t": p["t"], "px": p["px"], "qty": p["q"],
                            "tp": p["tp"], "sl": p["sl"],
                            "now": last[p["s"]]} for p in pos],
-            "last": last, "start": START, "days": TEST_DAYS,
+            "last": last, "start": start, "days": test_days, "sl_pct": sl * 100, "tp_pct": tp * 100,
             "generated": dt.datetime.now(UTC).isoformat(timespec="seconds")}
 
 

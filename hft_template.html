@@ -4,17 +4,17 @@
 <style>
 :root{
   --bg:#F4F3F0; --card:#FFFFFF; --ink:#1B1A17; --muted:#6A6862;
-  --line:#E3E1DC; --up:#0E7C4F; --dn:#C2453A; --fee:#B4762A; --chip:#EAE8E2;
+  --line:#E3E1DC; --up:#0E7C4F; --dn:#C2453A; --fee:#B4762A; --chip:#EAE8E2; --wide:#7A5EA8;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#131211; --card:#1C1B19; --ink:#EAE7E1; --muted:#9A968D;
-    --line:#2B2926; --up:#3FBD85; --dn:#E0685C; --fee:#D9A44A; --chip:#232120;
+    --line:#2B2926; --up:#3FBD85; --dn:#E0685C; --fee:#D9A44A; --chip:#232120; --wide:#A98CD8;
   }
 }
 :root[data-theme="dark"]{
   --bg:#131211; --card:#1C1B19; --ink:#EAE7E1; --muted:#9A968D;
-  --line:#2B2926; --up:#3FBD85; --dn:#E0685C; --fee:#D9A44A; --chip:#232120;
+  --line:#2B2926; --up:#3FBD85; --dn:#E0685C; --fee:#D9A44A; --chip:#232120; --wide:#A98CD8;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -26,6 +26,11 @@ h1{font-size:21px;font-weight:700;margin:0;letter-spacing:-.01em}
   font-weight:600;color:var(--muted)}
 .stamp{margin-left:auto;font-size:13px;color:var(--muted)}
 .stale{color:var(--fee);font-weight:600}
+.seg{display:flex;gap:4px;background:var(--chip);border-radius:10px;padding:4px;width:fit-content;max-width:100%}
+.seg button{border:0;background:transparent;color:var(--muted);font:600 13px/1 "Instrument Sans",sans-serif;
+  padding:8px 14px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.seg button.active{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg button:focus-visible{outline:2px solid var(--up);outline-offset:1px}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
 .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
@@ -63,12 +68,16 @@ details p{margin:8px 0}
     <span class="stamp" id="stamp"></span>
   </header>
 
+  <div class="seg" role="tablist" aria-label="счёт">
+    <button data-k="a" class="active">Стоп −1% · с 30.08</button>
+    <button data-k="b">Стоп −3% · с 04.09</button>
+  </div>
+
   <div class="cards" id="cards"></div>
 
   <section>
     <h2>Капитал и накопленные комиссии</h2>
-    <div class="legend"><span><i style="background:var(--up)"></i>счёт</span>
-      <span><i style="background:var(--fee)"></i>уплачено комиссий</span></div>
+    <div class="legend" id="legend"></div>
     <div id="chart"></div>
   </section>
 
@@ -83,18 +92,18 @@ details p{margin:8px 0}
   </section>
 
   <section><details>
-    <summary>Правила (зафиксированы 30.08.2026)</summary>
-    <p>Виртуальные $100. Вход $10, максимум 10 позиций одновременно (лимит поднят с 5 до 10 в день старта, 30.08), 15 ликвидных пар.
-    Сигнал входа — цена выросла на 1% и более за последний час; из подходящих берутся
-    самые сильные. Выход: тейк +1,5%, стоп &minus;1%, либо по времени через 24 часа.
-    Комиссия 0,075% на сторону — реальный тариф пользователя (Binance с оплатой в BNB).</p>
-    <p>Что проверяем: бэктест на 15-минутных свечах за 2 месяца дал &minus;5,8% при этой
-    комиссии, причём при нулевой комиссии та же схема давала +17,9%. То есть у импульса
-    есть небольшое преимущество, но оно меньше стоимости частой торговли. Счёт заведён,
-    чтобы увидеть это на живом рынке.</p>
-    <p>Отличие от «Бумажной сотни»: там страница сама пересчитывает журнал из дневных
-    свечей, здесь журнал считается заранее — 5-минутных данных слишком много,
-    чтобы вложить их в страницу.</p>
+    <summary>Правила (зафиксированы 30.08.2026, второй счёт — 04.09)</summary>
+    <p><b>Общее для обоих счетов.</b> Виртуальные $100. Вход $10, максимум 10 позиций
+    одновременно, 15 ликвидных пар OKX, 5-минутные свечи. Сигнал входа — цена выросла на 1%
+    и более за последний час; из подходящих берутся самые сильные. Тейк +1,5%, либо выход
+    по времени через 24 часа. Комиссия 0,075% на сторону — реальный тариф пользователя.</p>
+    <p><b>Стоп −1%</b> — исходный счёт, старт 30.08. <b>Стоп −3%</b> — единственное отличие
+    в ширине стопа; добавлен 04.09 после проверки на трёх независимых периодах (28 дней OKX,
+    обе его половины, 62 дня Binance июнь–август): в каждом окне стоп 3% давал лучший результат,
+    чем 1%, потому что стоп в 1% сидит внутри обычного пятиминутного шума. Старт — с даты
+    добавления, задним числом не досчитан: правило выбрано уже глядя на предыдущие дни.</p>
+    <p>Оба счёта — трендовые: в бэктестах зарабатывали на растущем рынке и теряли в боковике,
+    и ни один не обгонял простое удержание BTC. Это симуляция для сравнения, а не рекомендация.</p>
   </details></section>
 
   <p class="note" id="footnote"></p>
@@ -102,77 +111,107 @@ details p{margin:8px 0}
 
 <script id="data" type="application/json">__DATA_JSON__</script>
 <script>
-const S = JSON.parse(document.getElementById("data").textContent);
+const DATA = JSON.parse(document.getElementById("data").textContent);
 const FEE = 0.00075, LOT = 10;
+const ACC = {
+  a: {s: DATA.a, name: "стоп −1%", color: "var(--up)"},
+  b: {s: DATA.b, name: "стоп −3%", color: "var(--wide)"},
+};
 const fmt = (x,d=2) => x.toLocaleString("ru-RU",{minimumFractionDigits:d,maximumFractionDigits:d});
 const fpx = x => x >= 100 ? fmt(x,2) : x >= 1 ? fmt(x,4) : fmt(x,6);
 const cls = x => x > 0 ? "up" : x < 0 ? "dn" : "";
 const sgn = (x,d=2) => (x > 0 ? "+" : "") + fmt(x,d);
 const tm = t => new Date(t).toISOString().slice(5,16).replace("T"," ");
 
-const eq = S.cash + S.positions.reduce((a,p) => a + p.qty*p.now, 0);
-const closed = S.trades.length;
-const wins = S.trades.filter(t => t.pnl_usd > 0).length;
-const fees = (closed*2 + S.positions.length) * LOT * FEE;   // круги + открытые входы
-const startMs = Date.parse(S.start + "T00:00:00Z");
-const elapsed = Math.max((Date.parse(S.generated) - startMs)/86400000, 0.01);
-const perDay = closed/elapsed;
+function stats(S){
+  const eq = S.cash + S.positions.reduce((a,p) => a + p.qty*p.now, 0);
+  const closed = S.trades.length;
+  const wins = S.trades.filter(t => t.pnl_usd > 0).length;
+  const fees = (closed*2 + S.positions.length) * LOT * FEE;
+  const startMs = Date.parse(S.start + "T00:00:00Z");
+  const elapsed = Math.max((Date.parse(S.generated) - startMs)/86400000, 0.01);
+  return {eq, closed, wins, fees, elapsed, perDay: closed/elapsed};
+}
 
-document.getElementById("daypill").textContent =
-  elapsed >= S.days ? "тест завершён" : `день ${Math.max(1,Math.ceil(elapsed))} из ${S.days}`;
-const age = (Date.now() - Date.parse(S.generated))/3600000;
 const st = document.getElementById("stamp");
-st.textContent = `данные на ${S.generated.slice(0,16).replace("T"," ")} UTC`;
+st.textContent = `данные на ${DATA.a.generated.slice(0,16).replace("T"," ")} UTC`;
+const age = (Date.now() - Date.parse(DATA.a.generated))/3600000;
 if (age > 6) { st.classList.add("stale"); st.textContent += ` — ${Math.floor(age)} ч назад`; }
 
-document.getElementById("cards").innerHTML = `
-  <div class="card"><div class="lbl">Счёт</div>
-    <div class="val ${cls(eq-100)}">$${fmt(eq)}</div>
-    <div class="sub ${cls(eq-100)}">${sgn(eq-100)} (${sgn((eq/100-1)*100)}%)</div></div>
-  <div class="card"><div class="lbl">Отдано комиссий</div>
-    <div class="val feec">$${fmt(fees)}</div>
-    <div class="sub feec">${fmt(fees/100*100)}% от счёта</div></div>
-  <div class="card"><div class="lbl">Сделок закрыто</div>
-    <div class="val">${closed}</div>
-    <div class="sub">${fmt(perDay,1)}/день · win ${closed?Math.round(wins/closed*100):0}%</div></div>
-  <div class="card"><div class="lbl">Позиции</div>
-    <div class="val">${S.positions.length}<span style="font-size:16px;color:var(--muted)">/10</span></div>
-    <div class="sub">в кэше $${fmt(S.cash)}</div></div>`;
+function renderHeader(k){
+  const S = ACC[k].s, {elapsed} = stats(S);
+  document.getElementById("daypill").textContent =
+    elapsed >= S.days ? "тест завершён" :
+    elapsed < 1/24 ? `старт ${S.start.slice(8)}.${S.start.slice(5,7)}` :
+    `день ${Math.max(1,Math.ceil(elapsed))} из ${S.days}`;
+}
 
-(function chart(){
-  const el = document.getElementById("chart");
-  if (S.curve.length < 3) { el.innerHTML = '<div class="empty">график появится после первых часов торговли</div>'; return; }
-  const W=600,H=190,P=8;
-  // накопленная комиссия по времени закрытия сделок
-  const feePts = [];
-  let acc = 0, ti = 0;
-  const sorted = [...S.trades].sort((a,b)=>a.out_t-b.out_t);
-  S.curve.forEach(c => {
-    while (ti < sorted.length && sorted[ti].out_t <= c.t) { acc += LOT*FEE*2; ti++; }
-    feePts.push(acc);
-  });
-  const vals = S.curve.map(c=>c.eq).concat([100]);
-  const lo = Math.min(...vals), hi = Math.max(...vals);
-  const pad = (hi-lo)*0.12 || 1;
-  const x = i => P + i*(W-2*P)/(S.curve.length-1);
+function renderCards(k){
+  const S = ACC[k].s, {eq, closed, wins, fees, perDay} = stats(S);
+  const other = ACC[k === "a" ? "b" : "a"];
+  const oeq = stats(other.s).eq;
+  document.getElementById("cards").innerHTML = `
+    <div class="card"><div class="lbl">Счёт · ${ACC[k].name}</div>
+      <div class="val ${cls(eq-100)}">$${fmt(eq)}</div>
+      <div class="sub ${cls(eq-100)}">${sgn(eq-100)} (${sgn((eq/100-1)*100)}%) · ${other.name}: $${fmt(oeq)}</div></div>
+    <div class="card"><div class="lbl">Отдано комиссий</div>
+      <div class="val feec">$${fmt(fees)}</div>
+      <div class="sub feec">${fmt(fees)}% от счёта</div></div>
+    <div class="card"><div class="lbl">Сделок закрыто</div>
+      <div class="val">${closed}</div>
+      <div class="sub">${fmt(perDay,1)}/день · win ${closed?Math.round(wins/closed*100):0}%</div></div>
+    <div class="card"><div class="lbl">Позиции</div>
+      <div class="val">${S.positions.length}<span style="font-size:16px;color:var(--muted)">/10</span></div>
+      <div class="sub">в кэше $${fmt(S.cash)}</div></div>`;
+}
+
+function renderChart(k){
+  const el = document.getElementById("chart"), lg = document.getElementById("legend");
+  const sel = ACC[k], oth = ACC[k === "a" ? "b" : "a"];
+  lg.innerHTML =
+    `<span><i style="background:${sel.color}"></i>${sel.name}</span>` +
+    `<span><i style="background:${oth.color}"></i>${oth.name}</span>` +
+    `<span><i style="background:var(--fee)"></i>комиссии (${sel.name})</span>`;
+  const curves = [ACC.a.s.curve, ACC.b.s.curve].filter(c => c.length >= 2);
+  if (!curves.length) {
+    el.innerHTML = '<div class="empty">график появится после первых часов торговли</div>'; return;
+  }
+  const W=600, H=190, P=8;
+  const t0 = Math.min(...curves.map(c => c[0].t));
+  const t1 = Math.max(...curves.map(c => c[c.length-1].t));
+  const vals = curves.flatMap(c => c.map(p => p.eq)).concat([100]);
+  const lo = Math.min(...vals), hi = Math.max(...vals), pad = (hi-lo)*0.12 || 1;
+  const x = t => P + (t-t0)/Math.max(t1-t0,1)*(W-2*P);
   const y = v => H-P - (v-(lo-pad))*(H-2*P)/((hi+pad)-(lo-pad));
-  const maxFee = Math.max(...feePts, 0.01);
+  const line = c => c.map(p => `${x(p.t).toFixed(1)},${y(p.eq).toFixed(1)}`).join(" ");
+  const feePts = []; let acc = 0, ti = 0;
+  const sorted = [...sel.s.trades].sort((a,b) => a.out_t-b.out_t);
+  sel.s.curve.forEach(c => {
+    while (ti < sorted.length && sorted[ti].out_t <= c.t) { acc += LOT*FEE*2; ti++; }
+    feePts.push({t: c.t, v: acc});
+  });
+  const maxFee = Math.max(...feePts.map(p => p.v), 0.01);
   const yf = v => H-P - v/maxFee*(H-2*P)*0.5;
-  const line = pts => pts.map((v,i)=>`${x(i).toFixed(1)},${v.toFixed(1)}`).join(" ");
-  const li = S.curve.length-1;
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="капитал и комиссии">
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="капитал двух счетов и комиссии">
     <line x1="${P}" y1="${y(100).toFixed(1)}" x2="${W-P}" y2="${y(100).toFixed(1)}"
-      stroke="var(--line)" stroke-dasharray="4 4"/>
-    <polyline points="${line(feePts.map(yf))}" fill="none" stroke="var(--fee)"
-      stroke-width="1.6" stroke-dasharray="3 3"/>
-    <polyline points="${line(S.curve.map(c=>y(c.eq)))}" fill="none" stroke="var(--up)" stroke-width="2.2"/>
-    <circle cx="${x(li).toFixed(1)}" cy="${y(S.curve[li].eq).toFixed(1)}" r="3.4" fill="var(--up)"/>
-    <text x="${P}" y="${y(100)-6}" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono">$100</text>
-  </svg>`;
-})();
+      stroke="var(--line)" stroke-dasharray="4 4"/>`;
+  if (feePts.length > 1)
+    svg += `<polyline points="${feePts.map(p => `${x(p.t).toFixed(1)},${yf(p.v).toFixed(1)}`).join(" ")}"
+      fill="none" stroke="var(--fee)" stroke-width="1.6" stroke-dasharray="3 3"/>`;
+  for (const A of [oth, sel]) {
+    const c = A.s.curve; if (c.length < 2) continue;
+    const isSel = A === sel;
+    svg += `<polyline points="${line(c)}" fill="none" stroke="${A.color}"
+      stroke-width="${isSel ? 2.2 : 1.4}" ${isSel ? "" : 'opacity="0.55"'}/>
+      <circle cx="${x(c[c.length-1].t).toFixed(1)}" cy="${y(c[c.length-1].eq).toFixed(1)}"
+      r="${isSel ? 3.4 : 2.6}" fill="${A.color}"/>`;
+  }
+  svg += `<text x="${P}" y="${y(100)-6}" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono">$100</text></svg>`;
+  el.innerHTML = svg;
+}
 
-(function pos(){
-  const el = document.getElementById("positions");
+function renderPositions(k){
+  const S = ACC[k].s, el = document.getElementById("positions");
   if (!S.positions.length) { el.innerHTML = '<div class="empty">позиций нет — движок ждёт импульса</div>'; return; }
   let h = "<table><tr><th>монета</th><th>вход</th><th>цена входа</th><th>сейчас</th>"
         + "<th>P&L</th><th>цель</th><th>стоп</th></tr>";
@@ -180,14 +219,13 @@ document.getElementById("cards").innerHTML = `
     const pnl = (p.now*(1-FEE))/(p.px*(1+FEE)) - 1;
     h += `<tr><td class="sym">${p.sym.replace("USDT","")}</td><td>${tm(p.t)}</td>
       <td>${fpx(p.px)}</td><td>${fpx(p.now)}</td>
-      <td class="${cls(pnl)}">${sgn(pnl*100)}%</td>
-      <td>${fpx(p.tp)}</td><td>${fpx(p.sl)}</td></tr>`;
+      <td class="${cls(pnl)}">${sgn(pnl*100)}%</td><td>${fpx(p.tp)}</td><td>${fpx(p.sl)}</td></tr>`;
   }
   el.innerHTML = h + "</table>";
-})();
+}
 
-(function journal(){
-  const el = document.getElementById("journal");
+function renderJournal(k){
+  const S = ACC[k].s, el = document.getElementById("journal"), closed = S.trades.length;
   if (!closed) { el.innerHTML = '<div class="empty">закрытых сделок пока нет</div>'; return; }
   const why = {take:"тейк", stop:"стоп", time:"время"};
   let h = "<table><tr><th>монета</th><th>вход</th><th>выход</th><th>причина</th>"
@@ -199,9 +237,20 @@ document.getElementById("cards").innerHTML = `
       <td class="${cls(t.pnl_usd)}">${sgn(t.pnl_usd)}</td></tr>`;
   el.innerHTML = h + "</table>" +
     (closed > 60 ? `<div class="note" style="margin-top:8px">показаны последние 60 из ${closed}</div>` : "");
-})();
+}
+
+function render(k){
+  document.querySelectorAll(".seg button").forEach(b => b.classList.toggle("active", b.dataset.k === k));
+  renderHeader(k); renderCards(k); renderChart(k); renderPositions(k); renderJournal(k);
+  try { localStorage.setItem("hft_view", k); } catch(e) {}
+}
+document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => render(b.dataset.k)));
 
 document.getElementById("footnote").textContent =
-  "Деньги виртуальные. Журнал считается по 5-минутным свечам OKX (точность повышена с 15 до 5 минут в день старта, 30.08) по правилам, " +
+  "Деньги виртуальные. Оба счёта считаются по одним и тем же 5-минутным свечам OKX по правилам, " +
   "зафиксированным до начала теста; вручную сделки не совершаются и не редактируются.";
+
+let view = "a";
+try { view = localStorage.getItem("hft_view") || "a"; } catch(e) {}
+render(view in ACC ? view : "a");
 </script>
