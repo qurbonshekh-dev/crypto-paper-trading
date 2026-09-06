@@ -12,3 +12,7 @@ _fixtures.json
 multi_run.log
 results_*.json
 _chartdata.json
+# ключи и состояние живого бота — НИКОГДА в репозиторий (он публичный)
+.env
+bot_state_*.json
+bot_*.log
